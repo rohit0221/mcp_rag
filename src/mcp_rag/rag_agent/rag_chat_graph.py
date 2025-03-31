@@ -45,18 +45,27 @@ async def retrieve_docs_node(state: dict, tools) -> dict:
     return {**state, "documents": documents}
 
 async def generate_answer_node(state: RAGChatState, tools) -> RAGChatState:
-    llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
     query = state["query"]
     docs = state["documents"]
 
     context = "\n\n".join([doc.page_content for doc in docs])
-    prompt = f"""You are an expert AI assistant. Use the context below to answer the question.
+    prompt = f"""You are a helpful and knowledgeable assistant that only answers questions based strictly on the provided context.
 
-Context:
-{context}
+                Your primary rule is:
+                👉 If the context does NOT contain the answer, respond with:
+                "I do not have enough information in the context to answer this question."
 
-Question: {query}
-Answer:"""
+                NEVER use your own knowledge or make assumptions.
+
+                ---
+
+                📚 Context:
+                {context}
+
+                ❓ Question: {query}
+
+💬 Answer:"""
 
     response = await llm.ainvoke(prompt)
     print("\n🧠 Final Answer:\n", response.content)
