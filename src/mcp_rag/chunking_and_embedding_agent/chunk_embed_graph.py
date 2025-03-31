@@ -7,6 +7,8 @@ from langchain_openai import OpenAIEmbeddings
 import tempfile
 import base64
 import re
+import uuid
+import asyncio
 
 class ChunkingState(TypedDict):
     file_paths: List[str]
@@ -25,38 +27,54 @@ async def chunk_and_embed_node(state: ChunkingState, tools) -> ChunkingState:
         b64_string = response["text"] if isinstance(response, dict) else response
 
         # Decode the base64 string into raw PDF bytes
-        raw_bytes = base64.b64decode(b64_string)
+        try:
+            raw_bytes = base64.b64decode(b64_string)
+        except Exception as e:
+            print(f"❌ Error decoding base64 for file {path}: {e}")
+            continue
 
         # Write bytes to a temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
             tmp_file.write(raw_bytes)
             temp_path = tmp_file.name
+        print(f"📝 Written temporary PDF file: {temp_path}")
 
         # Load and split PDF
         loader = PyPDFLoader(temp_path)
         documents: List[Document] = loader.load_and_split(splitter)
         print(f"✂️ Chunked into {len(documents)} pieces.")
 
-        # Embed and store
-        # for doc in documents:
-        #     vector = embeddings.embed_query(doc.page_content)
-        #     await create_document.ainvoke({
-        #         "content": doc.page_content,
-        #         "embedding": vector,
-        #         "metadata": doc.metadata
-        #     })
-        # Embed and store
+        # Embed and store each chunk with extra debugging.
         for i, doc in enumerate(documents):
             print(f"🔍 Processing chunk {i} of {len(documents)}")
-            vector = embeddings.embed_query(doc.page_content)
-            print(f"✅ Generated embedding for chunk {i}. Calling create_document...")
-            await create_document.ainvoke({
-                "content": doc.page_content,
-                "embedding": vector,
-                "metadata": doc.metadata
-            })
-            print(f"📝 Successfully stored chunk {i}.")
+            content_preview = doc.page_content[:100].replace("\n", " ") if doc.page_content else "EMPTY"
+            print(f"   Content preview (first 100 chars): {content_preview}")
+            print(f"   Metadata: {doc.metadata}")
 
+            vector = embeddings.embed_query(doc.page_content)
+            print(f"✅ Generated embedding for chunk {i} (vector length: {len(vector) if vector else 'None'}).")
+            
+            # Generate a unique document ID for this chunk
+            document_id = f"{uuid.uuid4()}"
+            print(f"🆔 Document ID for chunk {i}: {document_id}")
+
+            try:
+                print(f"🚀 Calling create_document for chunk {i}...")
+                # Wrap the create_document call in a 30-second timeout
+                response = await asyncio.wait_for(
+                    create_document.ainvoke({
+                        "document_id": document_id,
+                        "content": doc.page_content,
+                        "embedding": vector,
+                        "metadata": doc.metadata
+                    }),
+                    timeout=30
+                )
+                print(f"📝 Successfully stored chunk {i}. Response: {response}")
+            except asyncio.TimeoutError:
+                print(f"⏰ Timeout while storing chunk {i}.")
+            except Exception as e:
+                print(f"❌ Error storing chunk {i}: {e}")
 
     print("✅ Done embedding and storing chunks.")
     return state
