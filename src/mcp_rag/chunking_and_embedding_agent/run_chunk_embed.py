@@ -14,17 +14,26 @@ async def main():
 
     async with MultiServerMCPClient(config) as client:
         all_tools = client.get_tools()
-        tools = {tool.name: tool for tool in all_tools if tool.name in {"read_file", "create_document"}}
+        tools = {
+            tool.name: tool for tool in all_tools
+            if tool.name in {"read_file", "create_document"}
+        }
 
-        graph = build_chunk_embed_graph(tools)
+        print("\n🔌 Loaded MCP Tools:")
+        for name in tools:
+            print(f" - {name}")
 
-        # Manually specify input (or later fetch from Agent 1)
+        # Example input from file discovery agent, now pointing to the encoded PDF.
         file_paths = [
-            "C:\\GitHub\\mcp_servers\\filesystem\\docs\\attention.pdf"
+            "C:/GitHub/mcp_servers/filesystem/docs/pdfs_b64/attention.pdf.b64"
         ]
 
-        result = await graph.ainvoke({"file_paths": file_paths})
-        print("✅ Embedded and stored all chunks!")
+        print("\n📥 Processing files:")
+        for path in file_paths:
+            print(" ", path)
+
+        graph = build_chunk_embed_graph(tools)
+        await graph.ainvoke({"file_paths": file_paths})
 
 if __name__ == "__main__":
     asyncio.run(main())
