@@ -1,0 +1,22 @@
+{
+    "filesystem": {
+      "command": "C:/Program Files/nodejs/npx.cmd",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "C:/GitHub/mcp_servers/filesystem/docs"
+      ],
+      "transport": "stdio"
+    },
+    "chroma": {
+      "command": "C:/Users/neuralninja7/.local/bin/uv.exe",
+      "args": [
+        "--directory",
+        "C:/GitHub/mcp_servers/chroma",
+        "run",
+        "chroma"
+      ],
+      "transport": "stdio"
+    }
+  }
+  
